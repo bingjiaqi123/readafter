@@ -104,9 +104,6 @@ export function AddNotePage({ onAdd, onCancel }: AddNotePageProps) {
         <form onSubmit={handleSubmit} className="flex-1 space-y-4">
           <div className="mb-4">
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-gray-700">
-                标题
-              </label>
               <FormatMode
                 content={content}
                 onContentChange={handleContentChange}
