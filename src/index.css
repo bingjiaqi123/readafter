@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+@layer components {
+  .review-list {
+    @apply max-w-3xl mx-auto p-4;
+  }
+
+  .review-item {
+    @apply flex justify-between items-start p-4 mb-4 bg-gray-50 rounded-lg shadow-sm;
+  }
+
+  .review-content {
+    @apply flex-1;
+  }
+
+  .review-text {
+    @apply mb-2 leading-relaxed;
+  }
+
+  .review-timestamp {
+    @apply text-sm text-gray-500;
+  }
+
+  .delete-button {
+    @apply bg-transparent border-none text-red-500 text-2xl cursor-pointer p-1 ml-4 transition-colors hover:text-red-700;
+  }
+
+  .no-reviews {
+    @apply text-center text-gray-500 py-8;
+  }
+
+  .excel-export-button {
+    @apply bg-green-500 text-white border-none px-4 py-2 rounded cursor-pointer text-base transition-colors hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-65;
+  }
+
+  .remember-button {
+    @apply bg-green-500 text-white px-6 py-2 rounded-lg font-medium transition-colors hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50;
+  }
+
+  .forget-button {
+    @apply bg-red-500 text-white px-6 py-2 rounded-lg font-medium transition-colors hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50;
+  }
+
+  .review-details {
+    @apply mt-4 p-4 bg-white rounded-lg border border-gray-200;
+  }
+}
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ExcelExport styles */
+.excel-export-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.65;
+} 
