@@ -5,6 +5,12 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/',
+  define: {
+    __DEFINES__: JSON.stringify({
+      __VUE_OPTIONS_API__: true,
+      __VUE_PROD_DEVTOOLS__: false,
+    }),
+  },
   server: {
     port: 3000,
     open: true,
@@ -22,6 +28,13 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
           ui: ['@headlessui/react']
         }
+      }
+    },
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
       }
     }
   },
