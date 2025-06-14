@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog } from '@headlessui/react';
 import { DICT_CATEGORIES, type DictCategory, getDict, saveDict, resetDict } from '../../utils/Segment/manageDict';
 import { exportDict, importDict, validateDictFile, type ProgressCallback } from '../../utils/Manage/dictImportExport';
+import '../../styles/components/ManageDictDialog.css';
+import '../../styles/components/common.css';
 
 interface ManageDictDialogProps {
   isOpen: boolean;
@@ -40,12 +42,15 @@ export function ManageDictDialog({
   // 当分类改变时，更新当前分类的词库
   useEffect(() => {
     if (isOpen) {
-      const words = getDict(selectedCategory);
-      setCategoryWords(words);
-      // 当对话框打开时，将焦点设置到分类选择框
-      setTimeout(() => {
-        initialFocusRef.current?.focus();
-      }, 0);
+      const updateWords = async () => {
+        const words = await getDict(selectedCategory);
+        setCategoryWords(words);
+        // 当对话框打开时，将焦点设置到分类选择框
+        setTimeout(() => {
+          initialFocusRef.current?.focus();
+        }, 0);
+      };
+      updateWords();
     }
   }, [isOpen, selectedCategory]);
 
@@ -54,29 +59,29 @@ export function ManageDictDialog({
     word.includes(searchTerm)
   );
 
-  const handleAddWord = () => {
+  const handleAddWord = async () => {
     const trimmedWord = newWord.trim();
     if (!trimmedWord) return;
     
     const updatedWords = [...categoryWords, trimmedWord];
     setCategoryWords(updatedWords);
-    saveDict(selectedCategory, updatedWords);
+    await saveDict(selectedCategory, updatedWords);
     onDictChange(selectedCategory, updatedWords);
     setNewWord('');
     // 添加词后，将焦点返回到输入框
     newWordInputRef.current?.focus();
   };
 
-  const handleDeleteWord = (word: string) => {
+  const handleDeleteWord = async (word: string) => {
     const updatedWords = categoryWords.filter(w => w !== word);
     setCategoryWords(updatedWords);
-    saveDict(selectedCategory, updatedWords);
+    await saveDict(selectedCategory, updatedWords);
     onDictChange(selectedCategory, updatedWords);
   };
 
-  const handleResetDict = () => {
-    resetDict(selectedCategory);
-    const words = getDict(selectedCategory);
+  const handleResetDict = async () => {
+    await resetDict(selectedCategory);
+    const words = await getDict(selectedCategory);
     setCategoryWords(words);
     onDictChange(selectedCategory, words);
     // 重置后，将焦点设置到分类选择框
@@ -134,7 +139,7 @@ export function ManageDictDialog({
       await importDict(file, handleProgress);
       
       // 更新当前显示
-      const words = getDict(selectedCategory);
+      const words = await getDict(selectedCategory);
       setCategoryWords(words);
       onDictChange(selectedCategory, words);
       
@@ -191,10 +196,10 @@ export function ManageDictDialog({
                 <span className="text-sm text-gray-600">{progress.message}</span>
                 <span className="text-sm text-gray-600">{progress.progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="progress-bar">
                 <div
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${progress.progress}%` }}
+                  className="progress-bar-fill"
+                  data-progress={progress.progress}
                 />
               </div>
             </div>
@@ -320,8 +325,8 @@ export function ManageDictDialog({
               <li>添加的词会立即生效，影响后续的分词结果</li>
               <li>点击"重置"可以恢复当前分类的默认词库</li>
               <li>可以使用"导入/导出"功能备份或恢复词库设置</li>
-              {selectedCategory === 'measure' && (
-                <li>量词会在分词时根据上下文（如数字、"几"、"多少"等）进行识别</li>
+              {selectedCategory === 'number' && (
+                <li>数字词会在分词时根据上下文（如数字、"几"、"多少"等）进行识别</li>
               )}
               {selectedCategory === 'no_split_before' && (
                 <li>添加的词前面不会添加换气点，适合用于"的"、"了"等词</li>
@@ -352,6 +357,24 @@ export function ManageDictDialog({
             className="hidden"
             aria-label="导入词库文件"
           />
+
+          {/* 处理中提示 */}
+          {progress.isActive && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-xl">
+                <div className="text-lg font-medium mb-4">处理中...</div>
+                <div className="progress-bar">
+                  <div 
+                    className="progress-bar-fill"
+                    data-progress={progress.progress}
+                  />
+                </div>
+                <div className="text-sm text-gray-600 mt-2">
+                  {progress.message}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Dialog>

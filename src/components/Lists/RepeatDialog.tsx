@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 interface ReadList {
   id: string;
@@ -21,13 +21,6 @@ interface RepeatDialogProps {
   onClose: () => void;
   readLists: ReadList[];
   allSchemes: Scheme[];
-}
-
-// 计算有效字符数（排除引号、括号、书名号等标点）
-function getEffectiveCharCount(text: string): number {
-  // 移除引号、括号、书名号等标点
-  const cleanText = text.replace(/[""'「」『』（）()]/g, '');
-  return cleanText.length;
 }
 
 export function RepeatDialog({ 

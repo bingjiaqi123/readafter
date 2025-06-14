@@ -1,0 +1,13 @@
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out;
+  width: var(--progress);
+}
+
+/* 使用 CSS 变量来动态设置宽度 */
+.progress-bar-fill[data-progress] {
+  --progress: var(--progress-value);
+} 

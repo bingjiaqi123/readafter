@@ -1,28 +1,27 @@
 import React, { useMemo } from 'react';
+import { Note } from '../../types/index';
 import { buildTagTree, TagNode } from '../../utils/Manage/manageTagTree';
 import { calculateTagCounts } from '../../utils/Manage/manageTagCount';
-import { Note } from '../../types/index';
+import '../../styles/components/common.css';
 
 interface ManageTagTreeProps {
-  allTags: string[]; // 所有可用的标签
-  onTagSelect?: (tag: string) => void; // 标签选择回调
-  selectedTags?: string[]; // 已选中的标签
-  style?: 'default' | 'indigo'; // 样式变体
   items: Note[]; // 笔记列表，用于计算标签数量
+  onTagSelect: (path: string) => void;
+  selectedTags: string[];
 }
 
 export function ManageTagTree({ 
-  allTags, 
+  items, 
   onTagSelect, 
-  selectedTags = [],
-  style = 'default',
-  items = []
+  selectedTags = []
 }: ManageTagTreeProps) {
   // 构建标签树
   const tagTree = useMemo(() => {
-    const items = allTags.map(tag => ({ id: tag, tags: [tag] }));
-    return buildTagTree(items);
-  }, [allTags]);
+    const tagItems = items.flatMap((note: Note) => note.tags)
+      .filter((tag: string, index: number, self: string[]) => self.indexOf(tag) === index)
+      .map((tag: string) => ({ id: tag, tags: [tag] }));
+    return buildTagTree(tagItems);
+  }, [items]);
 
   // 计算每个标签下的笔记数量
   const tagCounts = useMemo(() => calculateTagCounts(items), [items]);
@@ -33,59 +32,51 @@ export function ManageTagTree({
       return (
         <>
           {/* 全部选项 */}
-          <button
-            onClick={() => onTagSelect?.('')}
-            className={`block w-full text-left px-2 py-1 rounded mb-2 ${
-              selectedTags.length === 0
-                ? style === 'indigo' 
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'bg-blue-100 text-blue-800'
-                : 'hover:bg-gray-100'
-            }`}
-          >
-            全部
-            <span className="ml-2 text-pink-600 text-sm">
-              {items.length}
-            </span>
-          </button>
+          <div className="tag-tree-node" data-level={0}>
+            <button
+              onClick={() => onTagSelect?.('')}
+              className={selectedTags.length === 0 ? 'selected' : ''}
+            >
+              <span>全部</span>
+              <span className="count">{items.length}</span>
+            </button>
+          </div>
           {/* 其他标签 */}
-          {Array.from(node.children.values()).map(child => renderNode(child))}
+          {Array.from(node.children.values())
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(child => renderNode(child, 1))}
         </>
       );
     }
 
     const children = Array.from(node.children.values()).sort((a, b) => a.name.localeCompare(b.name));
     const isSelected = selectedTags.includes(node.fullPath);
-    
-    const selectedStyle = style === 'indigo' 
-      ? 'bg-indigo-100 text-indigo-700'
-      : 'bg-blue-100 text-blue-800';
-    
-    const hoverStyle = 'hover:bg-gray-100';
-
-    // 计算当前标签下的笔记数量
     const noteCount = tagCounts.get(node.fullPath) || 0;
 
     return (
-      <div key={node.fullPath} style={{ marginLeft: `${level * 20}px` }}>
+      <div
+        key={node.fullPath}
+        className="tag-tree-node"
+        data-level={level}
+      >
         <button
           onClick={() => onTagSelect?.(node.fullPath)}
-          className={`block w-full text-left px-2 py-1 rounded ${
-            isSelected ? selectedStyle : hoverStyle
-          }`}
+          className={isSelected ? 'selected' : ''}
         >
-          {node.name}
-          <span className="ml-2 text-pink-600 text-sm">
-            {noteCount}
-          </span>
+          <span>{node.name}</span>
+          <span className="count">{noteCount}</span>
         </button>
-        {children.map(child => renderNode(child, level + 1))}
+        {children.length > 0 && (
+          <div className="mt-1">
+            {children.map(child => renderNode(child, level + 1))}
+          </div>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="space-y-1">
+    <div className="py-2">
       {renderNode(tagTree)}
     </div>
   );

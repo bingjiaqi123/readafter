@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { TinyDeleteButton } from '../TinyDeleteButton';
 
 interface SortButtonProps {

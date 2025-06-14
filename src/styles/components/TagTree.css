@@ -1,0 +1,8 @@
+.tag-tree-node {
+  @apply flex items-center space-x-2 py-1;
+}
+
+/* 使用 CSS 变量来动态设置缩进 */
+.tag-tree-node[data-level] {
+  margin-left: calc(var(--level) * 20px);
+} 

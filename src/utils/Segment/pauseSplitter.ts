@@ -9,13 +9,6 @@ const MAX_LENGTH = 20;
 const MIN_LENGTH = 6;
 
 /**
- * 获取文本中不计标点的字符数
- */
-function getNonPunctuationLength(text: string): number {
-    return text.replace(PUNCTUATION_REGEX, '').length;
-}
-
-/**
  * 尝试在顿号处分割文本
  * @param text 要分割的文本
  * @returns 如果找到合适的分割点，返回分割后的部分；否则返回 null

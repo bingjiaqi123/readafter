@@ -1,28 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ReadList, Note, ReadScheme } from '../../types';
+import React, { useState, useRef } from 'react';
+import { ReadList, ReadScheme } from '../../types';
 import { TextDeleteButton } from '../TextDeleteButton';
 import { RepeatDialog } from './RepeatDialog';
-import { deleteReadList } from '../../utils/Lists/listsDelete';
-import { updateReadList } from '../../utils/Lists/listsUpdate';
 import { ExpandMode } from './ExpandMode';
 import { SortButton } from './SortButton';
 
 interface ReadListsPageProps {
-  items: Note[];
   readLists: ReadList[];
   readSchemes: ReadScheme[];
   onDeleteReadList: (listId: string, deleteMode: 'list-only' | 'unique-schemes' | 'all-schemes') => void;
-  onCreateReadList: (name: string, selectedSchemes: Array<{ schemeId: string; noteId: string }>) => void;
-  onUpdateListName?: (listId: string, newName: string) => void;
-  onUpdateSchemeOrder?: (listId: string, schemeId: string, newOrder: number) => void;
+  onUpdateListName: (listId: string, newName: string) => void;
+  onUpdateSchemeOrder: (listId: string, schemeIds: string[]) => void;
+  onAddToExistingList: (listId: string, schemes: { schemeId: string; noteId: string }[]) => void;
+  onDeleteScheme: (listId: string, schemeId: string) => void;
+  onEditReadScheme: (listId: string, schemeId: string, text: string, title: string, isTitleEdited: boolean) => void;
 }
 
 export function ReadListsPage({ 
-  items, 
   readLists, 
   readSchemes,
   onDeleteReadList, 
-  onCreateReadList,
   onUpdateListName,
   onUpdateSchemeOrder
 }: ReadListsPageProps) {
@@ -30,8 +27,6 @@ export function ReadListsPage({
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [showDeleteSchemeDialog, setShowDeleteSchemeDialog] = useState(false);
   const [schemeToDelete, setSchemeToDelete] = useState<{ listId: string; schemeId: string; } | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newListName, setNewListName] = useState('');
   const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
   const [isRepeatDialogOpen, setIsRepeatDialogOpen] = useState(false);
   const [currentListId, setCurrentListId] = useState<string | null>(null);
@@ -57,28 +52,9 @@ export function ReadListsPage({
     setListToDelete(null);
   };
 
-  const handleCreateList = () => {
-    if (newListName.trim()) {
-      onCreateReadList(newListName.trim(), []);
-      setShowCreateDialog(false);
-      setNewListName('');
-    }
-  };
-
   const handleStartRead = (listId: string) => {
     setCurrentListId(listId);
     setIsRepeatDialogOpen(true);
-  };
-
-  const handleReadComplete = () => {
-    setCurrentListId(null);
-  };
-
-  // 获取列表中的有效方案数量（过滤掉已被删除的方案）
-  const getValidSchemeCount = (list: ReadList) => {
-    return list.schemes.filter(scheme => 
-      readSchemes.some(s => s.id === scheme.schemeId)
-    ).length;
   };
 
   const toggleListExpand = (listId: string) => {
@@ -130,31 +106,37 @@ export function ReadListsPage({
     const currentIndex = schemes.findIndex(s => s.schemeId === schemeId);
     if (currentIndex === -1) return;
 
-    let newOrder: number;
+    let schemeIds: string[];
     switch (direction) {
       case 'top':
-        newOrder = 0;
+        schemeIds = [schemeId, ...schemes.filter(s => s.schemeId !== schemeId).map(s => s.schemeId)];
         break;
       case 'up':
         if (currentIndex === 0) return;
-        // 交换当前方案和上一个方案的顺序
-        const prevScheme = schemes[currentIndex - 1];
-        onUpdateSchemeOrder(listId, prevScheme.schemeId, schemes[currentIndex].order);
-        newOrder = prevScheme.order;
+        schemeIds = [
+          ...schemes.slice(0, currentIndex - 1).map(s => s.schemeId),
+          schemeId,
+          schemes[currentIndex - 1].schemeId,
+          ...schemes.slice(currentIndex + 1).map(s => s.schemeId)
+        ];
         break;
       case 'down':
         if (currentIndex === schemes.length - 1) return;
-        // 交换当前方案和下一个方案的顺序
-        const nextScheme = schemes[currentIndex + 1];
-        onUpdateSchemeOrder(listId, nextScheme.schemeId, schemes[currentIndex].order);
-        newOrder = nextScheme.order;
+        schemeIds = [
+          ...schemes.slice(0, currentIndex).map(s => s.schemeId),
+          schemes[currentIndex + 1].schemeId,
+          schemeId,
+          ...schemes.slice(currentIndex + 2).map(s => s.schemeId)
+        ];
         break;
       case 'bottom':
-        newOrder = schemes[schemes.length - 1].order + 1;
+        schemeIds = [...schemes.filter(s => s.schemeId !== schemeId).map(s => s.schemeId), schemeId];
         break;
+      default:
+        return;
     }
 
-    onUpdateSchemeOrder(listId, schemeId, newOrder);
+    onUpdateSchemeOrder(listId, schemeIds);
   };
 
   const handleDeleteSchemeClick = (listId: string, schemeId: string) => {
@@ -164,7 +146,7 @@ export function ReadListsPage({
 
   const handleDeleteSchemeConfirm = () => {
     if (schemeToDelete && onUpdateSchemeOrder) {
-      onUpdateSchemeOrder(schemeToDelete.listId, schemeToDelete.schemeId, -1);
+      onUpdateSchemeOrder(schemeToDelete.listId, [schemeToDelete.schemeId]);
       setShowDeleteSchemeDialog(false);
       setSchemeToDelete(null);
     }

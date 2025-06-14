@@ -1,105 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Tab } from '@headlessui/react';
 import { ReadPage } from './components/Read/ReadPage';
 import { ManagePage } from './components/Manage/ManagePage';
 import { AddNotePage } from './components/AddNote/AddNotePage';
 import { ReadListsPage } from './components/Lists/ReadListsPage';
 import { Note, ReadList, ReadScheme } from './types';
-import { deleteReadList } from './utils/Lists/listsDelete';
-import { exportData, importData } from './Data/importExport';
-
-interface ReadPageProps {
-  notes: Note[];
-  readLists: ReadList[];
-  readSchemes: ReadScheme[];
-  onDeleteScheme: (noteId: string, schemeId: string) => void;
-  onCreateList: (name: string, schemes: { schemeId: string; noteId: string }[]) => void;
-  onAddToExistingList: (listId: string, schemes: { schemeId: string; noteId: string }[]) => void;
-  onEditReadScheme: (noteId: string, schemeId: string, text: string, title: string, isTitleEdited: boolean) => void;
-}
+import { exportData, importData } from './data/importExport';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [readLists, setReadLists] = useState<ReadList[]>([]);
   const [readSchemes, setReadSchemes] = useState<ReadScheme[]>([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [hideSchemedNotes, setHideSchemedNotes] = useState(false);
+
+  const handleAddScheme = (noteIds: string[]) => {
+    // 为每个选中的笔记创建跟读方案
+    const newSchemes: ReadScheme[] = noteIds.map(noteId => {
+      const note = notes.find(n => n.id === noteId);
+      if (!note) return null;
+
+      const scheme: ReadScheme = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        noteId: note.id,
+        text: note.content,
+        title: note.title,
+        timestamp: new Date().toISOString(),
+        tags: note.tags || [],
+        isTitleEdited: false
+      };
+      return scheme;
+    }).filter((scheme): scheme is ReadScheme => scheme !== null);
+
+    setReadSchemes(prev => [...prev, ...newSchemes]);
+  };
 
   const handleAddNote = (note: Note) => {
     setNotes(prev => [...prev, note]);
   };
 
-  const handleEditNote = (id: string, title: string, content: string, tags: string[]) => {
-    setNotes(prev =>
-      prev.map(note =>
-        note.id === id
-          ? { ...note, title, content, tags }
-          : note
-      )
-    );
-  };
-
-  const handleDeleteNote = (id: string, deleteReadSchemes: boolean) => {
-    setNotes(prev => prev.filter(note => note.id !== id));
-    if (deleteReadSchemes) {
-      setReadSchemes(prev => prev.filter(scheme => scheme.noteId !== id));
-      setReadLists(prevLists =>
-        prevLists.map(list => ({
-          ...list,
-          schemes: list.schemes.filter(s => s.noteId !== id)
-        }))
-      );
-    }
-  };
-
-  const handleDeleteScheme = (noteId: string, schemeId: string) => {
-    // 从跟读方案列表中删除
-    setReadSchemes(prev => prev.filter(scheme => scheme.id !== schemeId && scheme.noteId !== noteId));
-    
-    // 从所有列表中删除该方案
-    setReadLists(prevLists => 
-      prevLists.map(list => ({
-        ...list,
-        schemes: list.schemes.filter(s => s.schemeId !== schemeId && s.noteId !== noteId)
-      }))
-    );
-  };
-
-  const handleEditReadScheme = (
-    noteId: string,
-    schemeId: string,
-    text: string,
-    title: string,
-    isTitleEdited: boolean,
-    tags: string[]
-  ) => {
+  const handleEditReadScheme = (_listId: string, schemeId: string, text: string, title: string, isTitleEdited: boolean) => {
+    // Update the scheme in readSchemes
     setReadSchemes(prevSchemes =>
       prevSchemes.map(scheme =>
         scheme.id === schemeId
-          ? { ...scheme, text, title, isTitleEdited, tags }
+          ? { ...scheme, text, title, isTitleEdited, timestamp: new Date().toISOString() }
           : scheme
       )
     );
   };
 
-  const handleAddReadScheme = (noteId: string, text: string, title?: string) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-
-    const newScheme: ReadScheme = {
-      id: Date.now().toString(),
-      noteId,
-      text,
-      title: title || note.title,
-      tags: [...(note.tags || [])],
-      isTitleEdited: false,
-      timestamp: new Date().toISOString()
-    };
-    setReadSchemes(prev => [...prev, newScheme]);
-  };
-
   const handleCreateList = (name: string, schemes: { schemeId: string; noteId: string }[]) => {
     const newList: ReadList = {
-      id: Date.now().toString(),
+      id: new Date().toISOString(),
       name,
       schemes: schemes.map((scheme, index) => ({
         schemeId: scheme.schemeId,
@@ -142,10 +95,6 @@ export default function App() {
     }));
   };
 
-  const handleDeleteList = (listId: string) => {
-    setReadLists(prev => prev.filter(list => list.id !== listId));
-  };
-
   const handleUpdateListName = (listId: string, newName: string) => {
     setReadLists(prevLists => 
       prevLists.map(list => 
@@ -156,38 +105,21 @@ export default function App() {
     );
   };
 
-  const handleUpdateSchemeOrder = (listId: string, schemeId: string, newOrder: number) => {
+  const handleUpdateSchemeOrder = (listId: string, schemeIds: string[]) => {
     setReadLists(prevLists => 
       prevLists.map(list => {
         if (list.id !== listId) return list;
 
-        // 如果 newOrder 是 -1，表示要删除这个方案
-        if (newOrder === -1) {
-          return {
-            ...list,
-            schemes: list.schemes.filter(s => s.schemeId !== schemeId)
-          };
-        }
+        // Create a map of new orders based on the schemeIds array
+        const newOrders = new Map(schemeIds.map((schemeId, index) => [schemeId, index]));
 
-        // 获取当前方案
-        const currentScheme = list.schemes.find(s => s.schemeId === schemeId);
-        if (!currentScheme) return list;
-
-        // 更新其他方案的顺序
-        const updatedSchemes = list.schemes.map(scheme => {
-          if (scheme.schemeId === schemeId) {
-            return { ...scheme, order: newOrder };
-          }
-          // 如果新顺序小于当前顺序，将当前顺序加1
-          if (newOrder < scheme.order && scheme.order <= currentScheme.order) {
-            return { ...scheme, order: scheme.order + 1 };
-          }
-          // 如果新顺序大于当前顺序，将当前顺序减1
-          if (newOrder > scheme.order && scheme.order >= currentScheme.order) {
-            return { ...scheme, order: scheme.order - 1 };
-          }
-          return scheme;
-        });
+        // Update the schemes with new orders
+        const updatedSchemes = list.schemes
+          .filter(scheme => newOrders.has(scheme.schemeId))
+          .map(scheme => ({
+            ...scheme,
+            order: newOrders.get(scheme.schemeId)!
+          }));
 
         return { ...list, schemes: updatedSchemes };
       })
@@ -226,6 +158,52 @@ export default function App() {
       console.error('导入失败:', error);
       alert('导入失败，请重试');
     }
+  };
+
+  const handleDeleteReadList = (listId: string, deleteMode: 'list-only' | 'unique-schemes' | 'all-schemes') => {
+    if (deleteMode === 'list-only') {
+      // 只删除列表，保留方案
+      setReadLists(prev => prev.filter(list => list.id !== listId));
+    } else if (deleteMode === 'unique-schemes') {
+      // 删除列表和仅在该列表中的方案
+      const list = readLists.find(l => l.id === listId);
+      if (!list) return;
+
+      // 获取仅在该列表中的方案ID
+      const uniqueSchemeIds = new Set(list.schemes.map(s => s.schemeId));
+      readLists.forEach(otherList => {
+        if (otherList.id !== listId) {
+          otherList.schemes.forEach(s => uniqueSchemeIds.delete(s.schemeId));
+        }
+      });
+
+      // 删除列表和唯一方案
+      setReadLists(prev => prev.filter(l => l.id !== listId));
+      setReadSchemes(prev => prev.filter(s => !uniqueSchemeIds.has(s.id)));
+    } else if (deleteMode === 'all-schemes') {
+      // 删除列表和所有相关方案
+      const list = readLists.find(l => l.id === listId);
+      if (!list) return;
+
+      // 获取所有相关方案ID
+      const schemeIds = new Set(list.schemes.map(s => s.schemeId));
+
+      // 删除列表和所有相关方案
+      setReadLists(prev => prev.filter(l => l.id !== listId));
+      setReadSchemes(prev => prev.filter(s => !schemeIds.has(s.id)));
+    }
+  };
+
+  const handleDeleteScheme = (noteId: string, schemeId: string) => {
+    // 从跟读方案列表中删除
+    setReadSchemes(prev => prev.filter(scheme => scheme.id !== schemeId && scheme.noteId !== noteId));
+    // 从所有列表中删除该方案
+    setReadLists(prevLists => 
+      prevLists.map(list => ({
+        ...list,
+        schemes: list.schemes.filter(s => s.schemeId !== schemeId && s.noteId !== noteId)
+      }))
+    );
   };
 
   return (
@@ -270,11 +248,13 @@ export default function App() {
               <ManagePage
                 notes={notes}
                 readSchemes={readSchemes}
-                onEdit={handleEditNote}
-                onDelete={handleDeleteNote}
-                onDeleteScheme={handleDeleteScheme}
-                onEditReadScheme={handleEditReadScheme}
-                onAddReadScheme={handleAddReadScheme}
+                onSearchChange={(term) => {
+                  // 如果需要，可以在这里添加额外的搜索逻辑
+                  console.log('Search term:', term);
+                }}
+                hideSchemedNotes={hideSchemedNotes}
+                onHideSchemedNotesChange={setHideSchemedNotes}
+                onAddScheme={handleAddScheme}
               />
             </Tab.Panel>
             <Tab.Panel>
@@ -290,23 +270,14 @@ export default function App() {
             </Tab.Panel>
             <Tab.Panel>
               <ReadListsPage
-                items={notes}
                 readLists={readLists}
                 readSchemes={readSchemes}
-                onDeleteReadList={(listId: string, deleteMode: 'list-only' | 'unique-schemes' | 'all-schemes') => {
-                  const { readLists: newReadLists, readSchemes: newReadSchemes } = deleteReadList(
-                    readLists,
-                    notes,
-                    readSchemes,
-                    listId,
-                    deleteMode
-                  );
-                  setReadLists(newReadLists);
-                  setReadSchemes(newReadSchemes);
-                }}
-                onCreateReadList={handleCreateList}
+                onDeleteReadList={handleDeleteReadList}
                 onUpdateListName={handleUpdateListName}
                 onUpdateSchemeOrder={handleUpdateSchemeOrder}
+                onAddToExistingList={handleAddToExistingList}
+                onDeleteScheme={handleDeleteScheme}
+                onEditReadScheme={handleEditReadScheme}
               />
             </Tab.Panel>
           </Tab.Panels>

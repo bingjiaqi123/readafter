@@ -1,10 +1,6 @@
-import { isProperNoun, isNoSplitBefore, isNoSplitAfter, getDict, DictCategory } from './manageDict';
-import { PUNCTUATION_REGEX } from './punctuationDef';
+import { getDict } from './manageDict';
 import { handlePauseSplit } from './pauseSplitter';
 
-const MAX_LENGTH = 20;
-const MIN_LENGTH = 6;
-const MAX_SPLIT_TIMES = 3;
 const MAX_SENTENCE_LENGTH = 20;
 const MAX_RECURSION_DEPTH = 3;
 
@@ -179,7 +175,6 @@ async function findBestSplitPointWithSegments(segments: WordSegment[], text: str
     // 遍历所有可能的分割点（词与词之间）
     for (let i = 0; i < segments.length - 1; i++) {
         const currentWord = segments[i];
-        const nextWord = segments[i + 1];
         const pos = currentWord.end;
 
         // 检查分割点是否合法
@@ -342,7 +337,6 @@ export async function getAllPossibleSplitPoints(text: string): Promise<number[]>
     // 遍历所有词对
     for (let i = 0; i < words.length - 1; i++) {
         const currentWord = words[i];
-        const nextWord = words[i + 1];
         
         // 检查当前词和下一个词之间是否可以分割
         const canSplit = await isValidSplitPoint(text, currentWord.end);
@@ -365,7 +359,6 @@ export async function addBreathingPoints(text: string): Promise<string> {
     let resultWithBreathing = '';
     for (let i = 0; i < segments.length - 1; i++) {
         const currentSegment = segments[i];
-        const nextSegment = segments[i + 1];
         
         // 检查是否需要添加换气点
         const shouldAddBreathing = await isValidSplitPointWithSegments(segments, i);

@@ -1,4 +1,4 @@
-import { ReadList, ReadScheme } from '../../types';
+import { ReadList } from '../../types';
 
 /**
  * 创建新的阅读列表

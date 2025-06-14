@@ -5,7 +5,7 @@ import { Note, ReadList, ReadScheme, isReadSchemeWithNote } from '../../types/in
 import { AddToListsDialog } from './AddToListsDialog';
 import { TextDeleteButton } from '../TextDeleteButton';
 import { filterSchemes, FilteredScheme } from '../../utils/Read/readFilter';
-import { TagDisplay } from './TagDisplay';
+import { TagDisplay } from '../TagDisplay';
 import { ReadSearchBar } from './ReadSearchBar';
 
 interface ReadPageProps {
@@ -46,15 +46,6 @@ export function ReadPage({
   const [hideListedSchemes, setHideListedSchemes] = useState(false);
   const [schemeToEdit, setSchemeToEdit] = useState<SchemeToEdit | null>(null);
   const [newListName, setNewListName] = useState('');
-
-  // 获取所有标签
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    readSchemes.forEach((scheme: ReadScheme) => {
-      (scheme.tags || []).forEach((tag: string) => tagSet.add(tag));
-    });
-    return Array.from(tagSet).sort();
-  }, [readSchemes]);
 
   // 过滤方案
   const filteredSchemes: FilteredScheme[] = useMemo(() => {
@@ -197,13 +188,11 @@ export function ReadPage({
   return (
     <div className="flex h-full">
       {/* 左侧标签树 */}
-      <div className="w-64 flex-shrink-0 border-r border-gray-200 pr-4">
+      <div className="w-64 border-r border-gray-200 overflow-y-auto">
         <ReadTagTree
-          allTags={allTags}
+          items={readSchemes}
           onTagSelect={handleTagSelect}
           selectedTags={selectedTags}
-          style="indigo"
-          schemes={readSchemes}
         />
       </div>
 
@@ -240,15 +229,30 @@ export function ReadPage({
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {scheme.title || (scheme.noteTitle ? scheme.noteTitle : '独立跟读方案')}
-                        </h3>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-lg font-medium text-gray-900">
+                            {scheme.title || (scheme.noteTitle ? scheme.noteTitle : '独立跟读方案')}
+                          </h3>
+                          {scheme.isInList && (
+                            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                              已加入 {readLists.filter(list => 
+                                list.schemes.some((s: { schemeId: string }) => s.schemeId === scheme.id)
+                              ).length} 个列表
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {new Date(scheme.timestamp).toLocaleString()}
+                        </p>
                         {scheme.noteTitle && (
                           <p className="text-sm mt-1">
                             <span className="text-gray-500">笔记: </span>
                             <span className="text-pink-600">{scheme.noteTitle}</span>
                           </p>
                         )}
+                        <div className="mt-2">
+                          <TagDisplay tags={scheme.noteTags || []} />
+                        </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <button
@@ -274,21 +278,8 @@ export function ReadPage({
                         />
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(scheme.timestamp).toLocaleString()}
-                    </p>
-                    <p className="whitespace-pre-wrap text-gray-700 mb-4 mt-2">
+                    <div className="mt-2 text-gray-700 whitespace-pre-wrap">
                       {scheme.text}
-                    </p>
-                    <div className="flex flex-col space-y-2">
-                      <TagDisplay tags={scheme.noteTags || []} />
-                      {scheme.isInList && (
-                        <span className="text-sm text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded inline-block">
-                          已加入 {readLists.filter(list => 
-                            list.schemes.some((s: { schemeId: string }) => s.schemeId === scheme.id)
-                          ).length} 个列表
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

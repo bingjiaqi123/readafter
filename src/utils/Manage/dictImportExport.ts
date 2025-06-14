@@ -1,5 +1,4 @@
-import { DictCategory, getAllDicts, saveDict } from '../Segment/manageDict';
-import dictData from '../../data/dict.json';
+import { DictCategory, getAllDicts, saveDict, DICT_CATEGORIES } from '../Segment/manageDict';
 
 // 进度回调类型
 export type ProgressCallback = (progress: number, message: string) => void;
@@ -82,7 +81,7 @@ export const importDict = async (file: File, onProgress?: ProgressCallback): Pro
       }
 
       // 验证分类 ID 是否有效
-      if (!Object.values(dictData.categories).some(c => c.id === category.id)) {
+      if (!DICT_CATEGORIES.some(c => c.id === category.id)) {
         throw new Error(`无效的分类 ID: ${category.id}`);
       }
 
@@ -138,7 +137,7 @@ export const validateDictFile = async (file: File, onProgress?: ProgressCallback
             category.id &&
             Array.isArray(category.words) &&
             category.words.every((word: unknown) => typeof word === 'string') &&
-            Object.values(dictData.categories).some(c => c.id === category.id)
+            DICT_CATEGORIES.some(c => c.id === category.id)
           );
         });
 

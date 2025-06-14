@@ -33,7 +33,7 @@ export function buildTagTree(items: Item[] = []): TagNode {
       let current = root;
       let currentPath = '';
 
-      parts.forEach((part, index) => {
+      parts.forEach((part) => {
         if (!part) return;
         currentPath = currentPath ? `${currentPath}-${part}` : part;
         if (!current.children.has(part)) {

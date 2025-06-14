@@ -27,8 +27,8 @@ export function TagDisplay({
           <span
             key={tag}
             onClick={() => onTagClick?.(tag)}
-            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 ${
-              onTagClick ? 'cursor-pointer hover:bg-indigo-200' : ''
+            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 ${
+              onTagClick ? 'cursor-pointer hover:bg-blue-200' : ''
             }`}
           >
             {tag}
