@@ -6,6 +6,14 @@ import { AddNotePage } from './components/AddNote/AddNotePage';
 import { ReadListsPage } from './components/Lists/ReadListsPage';
 import { Note, ReadList, ReadScheme } from './types';
 import { exportData, importData } from './data/importExport';
+import { 
+  deleteNote, 
+  deleteScheme, 
+  deleteNoteAndSchemes,
+  deleteNotes,
+  deleteNotesAndSchemes,
+  deleteSchemes
+} from './utils/Manage/manageDelete';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -194,14 +202,14 @@ export default function App() {
     }
   };
 
-  const handleDeleteScheme = (noteId: string, schemeId: string) => {
+  const handleDeleteScheme = (_noteId: string, schemeId: string) => {
     // 从跟读方案列表中删除
-    setReadSchemes(prev => prev.filter(scheme => scheme.id !== schemeId && scheme.noteId !== noteId));
+    setReadSchemes(prev => deleteScheme(prev, schemeId));
     // 从所有列表中删除该方案
     setReadLists(prevLists => 
       prevLists.map(list => ({
         ...list,
-        schemes: list.schemes.filter(s => s.schemeId !== schemeId && s.noteId !== noteId)
+        schemes: list.schemes.filter(s => s.schemeId !== schemeId)
       }))
     );
   };
@@ -215,11 +223,15 @@ export default function App() {
   };
 
   const handleDeleteNote = (noteId: string, deleteMode: 'note-only' | 'note-and-schemes') => {
-    setNotes(prev => prev.filter(note => note.id !== noteId));
-    
-    if (deleteMode === 'note-and-schemes') {
-      // 同时删除相关的跟读方案
-      setReadSchemes(prev => prev.filter(scheme => scheme.noteId !== noteId));
+    if (deleteMode === 'note-only') {
+      // 只删除笔记
+      setNotes(prev => deleteNote(prev, noteId));
+    } else {
+      // 删除笔记并同时删除相关的跟读方案
+      const result = deleteNoteAndSchemes(notes, readSchemes, noteId);
+      setNotes(result.notes);
+      setReadSchemes(result.schemes);
+      
       // 从所有列表中删除相关方案
       setReadLists(prevLists => 
         prevLists.map(list => ({
@@ -228,6 +240,38 @@ export default function App() {
         }))
       );
     }
+  };
+
+  const handleBatchDeleteNotes = (noteIds: string[], deleteMode: 'note-only' | 'note-and-schemes') => {
+    if (deleteMode === 'note-only') {
+      // 批量删除笔记
+      setNotes(prev => deleteNotes(prev, noteIds));
+    } else {
+      // 批量删除笔记并同时删除相关的跟读方案
+      const result = deleteNotesAndSchemes(notes, readSchemes, noteIds);
+      setNotes(result.notes);
+      setReadSchemes(result.schemes);
+      
+      // 从所有列表中删除相关方案
+      setReadLists(prevLists => 
+        prevLists.map(list => ({
+          ...list,
+          schemes: list.schemes.filter(s => !noteIds.includes(s.noteId))
+        }))
+      );
+    }
+  };
+
+  const handleBatchDeleteSchemes = (schemeIds: string[]) => {
+    // 批量删除跟读方案
+    setReadSchemes(prev => deleteSchemes(prev, schemeIds));
+    // 从所有列表中删除这些方案
+    setReadLists(prevLists => 
+      prevLists.map(list => ({
+        ...list,
+        schemes: list.schemes.filter(s => !schemeIds.includes(s.schemeId))
+      }))
+    );
   };
 
   const handleAddReadScheme = (noteId: string, text: string, title?: string) => {
@@ -241,6 +285,22 @@ export default function App() {
       isTitleEdited: false
     };
     setReadSchemes(prev => [...prev, newScheme]);
+  };
+
+  const handleUpdateNoteTags = (noteIds: string[], newTags: string[]) => {
+    setNotes(prev => prev.map(note => 
+      noteIds.includes(note.id) 
+        ? { ...note, tags: newTags, timestamp: new Date().toISOString() }
+        : note
+    ));
+  };
+
+  const handleUpdateSchemeTags = (schemeIds: string[], newTags: string[]) => {
+    setReadSchemes(prev => prev.map(scheme => 
+      schemeIds.includes(scheme.id) 
+        ? { ...scheme, tags: newTags, timestamp: new Date().toISOString() }
+        : scheme
+    ));
   };
 
   return (
@@ -294,7 +354,9 @@ export default function App() {
                 onAddScheme={handleAddScheme}
                 onEditNote={handleEditNote}
                 onDeleteNote={handleDeleteNote}
+                onBatchDeleteNotes={handleBatchDeleteNotes}
                 onAddReadScheme={handleAddReadScheme}
+                onUpdateNoteTags={handleUpdateNoteTags}
               />
             </Tab.Panel>
             <Tab.Panel>
@@ -303,9 +365,11 @@ export default function App() {
                 readLists={readLists}
                 readSchemes={readSchemes}
                 onDeleteScheme={handleDeleteScheme}
+                onBatchDeleteSchemes={handleBatchDeleteSchemes}
                 onCreateList={handleCreateList}
                 onAddToExistingList={handleAddToExistingList}
                 onEditReadScheme={handleEditReadScheme}
+                onUpdateSchemeTags={handleUpdateSchemeTags}
               />
             </Tab.Panel>
             <Tab.Panel>

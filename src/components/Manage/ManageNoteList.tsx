@@ -12,6 +12,7 @@ interface ManageNoteListProps {
   hideSchemedNotes: boolean;
   onHideSchemedChange: (hide: boolean) => void;
   isMultiSelect: boolean;
+  isAllSelect: boolean;
   selectedNotes: Set<string>;
   onNoteSelect: (noteId: string) => void;
   onEditNote: (noteId: string, title: string, content: string, tags: string[]) => void;
@@ -23,6 +24,7 @@ export function ManageNoteList({
   items,
   readSchemes,
   isMultiSelect,
+  isAllSelect,
   selectedNotes,
   onNoteSelect,
   onEditNote,
@@ -56,12 +58,13 @@ export function ManageNoteList({
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {items.map(note => {
         const hasScheme = readSchemes.some(scheme => scheme.noteId === note.id);
+        const isSelectMode = isMultiSelect || isAllSelect;
         return (
           <div
             key={note.id}
-            onClick={() => isMultiSelect && onNoteSelect(note.id)}
+            onClick={() => isSelectMode && onNoteSelect(note.id)}
             className={`p-4 border rounded-lg ${
-              isMultiSelect
+              isSelectMode
                 ? 'cursor-pointer hover:border-indigo-500'
                 : 'border-gray-200 hover:border-gray-300'
             } ${
@@ -73,7 +76,7 @@ export function ManageNoteList({
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-2">
-                  {isMultiSelect && (
+                  {isSelectMode && (
                     <label className="flex items-center">
                       <input
                         type="checkbox"
@@ -96,7 +99,7 @@ export function ManageNoteList({
                   {new Date(note.timestamp).toLocaleString()}
                 </p>
               </div>
-              {!isMultiSelect && (
+              {!isSelectMode && (
                 <div className="flex items-center space-x-2 ml-4">
                   <button
                     onClick={(e) => {

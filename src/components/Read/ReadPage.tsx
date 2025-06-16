@@ -1,6 +1,8 @@
 import { useState, useMemo, MouseEvent as ReactMouseEvent } from 'react';
 import { ReadTagTree } from './ReadTagTree';
 import { EditReadDialog } from './EditReadDialog';
+import { EditTagsDialog } from '../EditTagsDialog';
+import { DeleteDialog } from '../Manage/DeleteDialog';
 import { Note, ReadList, ReadScheme, isReadSchemeWithNote } from '../../types/index';
 import { AddToListsDialog } from './AddToListsDialog';
 import { TextDeleteButton } from '../TextDeleteButton';
@@ -13,9 +15,11 @@ interface ReadPageProps {
   readLists: ReadList[];
   readSchemes: ReadScheme[];
   onDeleteScheme: (noteId: string, schemeId: string) => void;
+  onBatchDeleteSchemes: (schemeIds: string[]) => void;
   onCreateList: (name: string, schemes: { schemeId: string; noteId: string }[]) => void;
   onAddToExistingList: (listId: string, schemes: { schemeId: string; noteId: string }[]) => void;
   onEditReadScheme: (noteId: string, schemeId: string, text: string, title: string, isTitleEdited: boolean, tags: string[]) => void;
+  onUpdateSchemeTags: (schemeIds: string[], tags: string[]) => void;
 }
 
 interface SchemeToEdit {
@@ -31,16 +35,20 @@ export function ReadPage({
   readLists,
   readSchemes,
   onDeleteScheme,
+  onBatchDeleteSchemes,
   onCreateList,
   onAddToExistingList,
   onEditReadScheme,
+  onUpdateSchemeTags,
 }: ReadPageProps) {
   const [selectedSchemes, setSelectedSchemes] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [isAllSelected, setIsAllSelected] = useState(false);
+  const [isAllSelectMode, setIsAllSelectMode] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showToListDialog, setShowToListDialog] = useState(false);
+  const [showEditTagsDialog, setShowEditTagsDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [hideListedSchemes, setHideListedSchemes] = useState(false);
@@ -61,15 +69,26 @@ export function ReadPage({
 
   // 多选/全选
   const handleMultiSelectToggle = () => {
-    if (isMultiSelectMode) {
-      setIsMultiSelectMode(false);
-      setSelectedSchemes(new Set());
-      setIsAllSelected(false);
-    } else {
-      setIsMultiSelectMode(true);
-    }
+    setIsMultiSelectMode(true);
+    setIsAllSelectMode(false);
+    setSelectedSchemes(new Set());
   };
+
+  const handleAllSelectToggle = () => {
+    setIsAllSelectMode(true);
+    setIsMultiSelectMode(false);
+    setSelectedSchemes(new Set(filteredSchemes.map(s => s.id)));
+  };
+
+  const handleCancelMultiSelect = () => {
+    setIsMultiSelectMode(false);
+    setIsAllSelectMode(false);
+    setSelectedSchemes(new Set());
+  };
+
   const handleSchemeSelect = (schemeId: string) => {
+    if (!isMultiSelectMode && !isAllSelectMode) return;
+    
     setSelectedSchemes(prev => {
       const next = new Set(prev);
       if (next.has(schemeId)) {
@@ -77,18 +96,92 @@ export function ReadPage({
       } else {
         next.add(schemeId);
       }
-      setIsAllSelected(next.size === filteredSchemes.length);
       return next;
     });
   };
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedSchemes(new Set());
-      setIsAllSelected(false);
-    } else {
-      setSelectedSchemes(new Set(filteredSchemes.map(s => s.id)));
-      setIsAllSelected(true);
+
+  const handleDeleteAll = () => {
+    if (selectedSchemes.size === 0) return;
+    setShowBatchDeleteDialog(true);
+  };
+
+  const handleBatchDeleteConfirm = (_deleteMode: 'note-only' | 'note-and-schemes') => {
+    onBatchDeleteSchemes(Array.from(selectedSchemes));
+    setSelectedSchemes(new Set());
+    setIsMultiSelectMode(false);
+    setIsAllSelectMode(false);
+    setShowBatchDeleteDialog(false);
+  };
+
+  const handleBatchDeleteCancel = () => {
+    setShowBatchDeleteDialog(false);
+  };
+
+  const handleRemoveAllLinks = () => {
+    if (selectedSchemes.size === 0) return;
+    if (window.confirm(`确定要移除选中的 ${selectedSchemes.size} 个跟读方案的笔记链接吗？`)) {
+      // TODO: 实现移除链接功能
+      console.log('移除链接功能待实现');
     }
+  };
+
+  const handleTagChange = () => {
+    if (selectedSchemes.size === 0) return;
+    setShowEditTagsDialog(true);
+  };
+
+  const handleTagsSave = (newTags: string[]) => {
+    onUpdateSchemeTags(Array.from(selectedSchemes), newTags);
+    setShowEditTagsDialog(false);
+  };
+
+  const handleTagsSaveWithDiff = (tagsToAdd: string[], tagsToRemove: string[]) => {
+    // 处理标签不一致的情况
+    selectedSchemes.forEach(schemeId => {
+      const scheme = readSchemes.find(s => s.id === schemeId);
+      if (scheme) {
+        const currentTags = scheme.tags || [];
+        // 移除要删除的标签
+        const tagsAfterRemove = currentTags.filter(tag => !tagsToRemove.includes(tag));
+        // 添加新标签
+        const finalTags = [...new Set([...tagsAfterRemove, ...tagsToAdd])];
+        onUpdateSchemeTags([schemeId], finalTags);
+      }
+    });
+    setShowEditTagsDialog(false);
+  };
+
+  // 获取所有选中方案的标签
+  const getAllSelectedSchemeTags = () => {
+    const allTags = new Set<string>();
+    selectedSchemes.forEach(schemeId => {
+      const scheme = readSchemes.find(s => s.id === schemeId);
+      if (scheme && scheme.tags) {
+        scheme.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    return Array.from(allTags);
+  };
+
+  // 获取选中方案的初始标签（如果标签完全一致）
+  const getInitialTags = () => {
+    const selectedSchemeList = Array.from(selectedSchemes).map(schemeId => 
+      readSchemes.find(s => s.id === schemeId)
+    ).filter(Boolean) as ReadScheme[];
+    
+    if (selectedSchemeList.length === 0) return [];
+    
+    const firstSchemeTags = selectedSchemeList[0].tags || [];
+    const allHaveSameTags = selectedSchemeList.every(scheme => {
+      const schemeTags = scheme.tags || [];
+      // 检查标签集合是否相同，与顺序无关
+      return schemeTags.length === firstSchemeTags.length && 
+             schemeTags.every(tag => firstSchemeTags.includes(tag)) &&
+             firstSchemeTags.every(tag => schemeTags.includes(tag));
+    });
+    
+    // 如果标签完全一致，返回第一个方案的标签；否则返回空数组
+    return allHaveSameTags ? firstSchemeTags : [];
   };
 
   // 删除
@@ -205,11 +298,15 @@ export function ReadPage({
           hideSchemedNotes={hideListedSchemes}
           onHideSchemedChange={setHideListedSchemes}
           isMultiSelect={isMultiSelectMode}
+          isAllSelect={isAllSelectMode}
           onMultiSelectToggle={handleMultiSelectToggle}
+          onAllSelectToggle={handleAllSelectToggle}
+          onCancelMultiSelect={handleCancelMultiSelect}
           selectedSchemes={selectedSchemes}
           onAddToList={handleAddToList}
-          onSelectAll={handleSelectAll}
-          isAllSelected={isAllSelected}
+          onDeleteAll={handleDeleteAll}
+          onRemoveAllLinks={handleRemoveAllLinks}
+          onTagChange={handleTagChange}
         />
 
         {/* 方案列表 */}
@@ -218,18 +315,31 @@ export function ReadPage({
             {filteredSchemes.map((scheme: FilteredScheme) => {
               const originalScheme = readSchemes.find(s => s.id === scheme.id);
               if (!originalScheme) return null;
+              const isSelectMode = isMultiSelectMode || isAllSelectMode;
               return (
                 <div
                   key={scheme.id}
                   className={`bg-white shadow rounded-lg overflow-hidden ${
                     selectedSchemes.has(scheme.id) ? 'ring-2 ring-indigo-500' : ''
                   }`}
-                  onClick={() => isMultiSelectMode && handleSchemeSelect(scheme.id)}
+                  onClick={() => isSelectMode && handleSchemeSelect(scheme.id)}
                 >
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <div className="flex items-center space-x-2">
+                          {isSelectMode && (
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedSchemes.has(scheme.id)}
+                                onChange={() => handleSchemeSelect(scheme.id)}
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                onClick={e => e.stopPropagation()}
+                                aria-label={`选择方案：${scheme.title || '独立跟读方案'}`}
+                              />
+                            </label>
+                          )}
                           <h3 className="text-lg font-medium text-gray-900">
                             {scheme.title || (scheme.noteTitle ? scheme.noteTitle : '独立跟读方案')}
                           </h3>
@@ -254,29 +364,43 @@ export function ReadPage({
                           <TagDisplay tags={scheme.noteTags || []} />
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={(e: ReactMouseEvent) => {
-                            e.stopPropagation();
-                            handleEditClick(
-                              originalScheme.noteId,
-                              originalScheme.id,
-                              originalScheme.text,
-                              originalScheme.title || '',
-                              originalScheme.isTitleEdited || false
-                            );
-                          }}
-                          className="px-3 py-1 text-blue-600 hover:text-blue-800"
-                        >
-                          编辑
-                        </button>
-                        <TextDeleteButton
-                          onClick={(e?: ReactMouseEvent) => {
-                            if (e) e.stopPropagation();
-                            handleDeleteClick(originalScheme.noteId || '', originalScheme.id);
-                          }}
-                        />
-                      </div>
+                      {!isSelectMode && (
+                        <div className="flex items-center space-x-2">
+                          {originalScheme.noteId && (
+                            <button
+                              onClick={(e: ReactMouseEvent) => {
+                                e.stopPropagation();
+                                // TODO: 实现移除链接功能
+                                console.log('移除链接功能待实现');
+                              }}
+                              className="px-3 py-1 text-orange-600 hover:text-orange-800"
+                            >
+                              移除链接
+                            </button>
+                          )}
+                          <button
+                            onClick={(e: ReactMouseEvent) => {
+                              e.stopPropagation();
+                              handleEditClick(
+                                originalScheme.noteId,
+                                originalScheme.id,
+                                originalScheme.text,
+                                originalScheme.title || '',
+                                originalScheme.isTitleEdited || false
+                              );
+                            }}
+                            className="px-3 py-1 text-blue-600 hover:text-blue-800"
+                          >
+                            编辑
+                          </button>
+                          <TextDeleteButton
+                            onClick={(e?: ReactMouseEvent) => {
+                              if (e) e.stopPropagation();
+                              handleDeleteClick(originalScheme.noteId || '', originalScheme.id);
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="mt-2 text-gray-700 whitespace-pre-wrap">
                       {scheme.text}
@@ -348,9 +472,35 @@ export function ReadPage({
           initialText={schemeToEdit.text}
           initialTitle={schemeToEdit.title}
           initialIsTitleEdited={schemeToEdit.isTitleEdited}
-          initialTags={readSchemes.find(s => s.id === schemeToEdit.schemeId)?.tags || []}
+          initialTags={getInitialTags()}
         />
       )}
+
+      {/* 编辑标签对话框 */}
+      {showEditTagsDialog && (
+        <EditTagsDialog
+          isOpen={showEditTagsDialog}
+          onClose={() => {
+            setShowEditTagsDialog(false);
+          }}
+          onSave={handleTagsSave}
+          onSaveWithDiff={handleTagsSaveWithDiff}
+          initialTags={getInitialTags()}
+          allTags={getAllSelectedSchemeTags()}
+          itemCount={selectedSchemes.size}
+          itemType="scheme"
+        />
+      )}
+
+      {/* 批量删除确认对话框 */}
+      <DeleteDialog
+        isOpen={showBatchDeleteDialog}
+        onClose={handleBatchDeleteCancel}
+        onConfirm={handleBatchDeleteConfirm}
+        itemCount={selectedSchemes.size}
+        itemType="scheme"
+        isBatchDelete={true}
+      />
     </div>
   );
 } 
