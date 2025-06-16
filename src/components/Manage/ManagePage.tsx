@@ -13,7 +13,7 @@ interface ManagePageProps {
   onSearchChange: (term: string) => void;
   hideSchemedNotes: boolean;
   onHideSchemedNotesChange: (hide: boolean) => void;
-  onAddScheme: (noteIds: string[]) => void;
+  onAddScheme: (noteIds: string[]) => Promise<void>;
   onEditNote: (noteId: string, title: string, content: string, tags: string[]) => void;
   onDeleteNote: (noteId: string, deleteMode: 'note-only' | 'note-and-schemes') => void;
   onBatchDeleteNotes: (noteIds: string[], deleteMode: 'note-only' | 'note-and-schemes') => void;
@@ -42,9 +42,9 @@ export function ManagePage({
   const [showEditTagsDialog, setShowEditTagsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const handleAddToList = () => {
+  const handleAddToList = async () => {
     if (selectedNotes.size === 0) return;
-    onAddScheme(Array.from(selectedNotes));
+    await onAddScheme(Array.from(selectedNotes));
     setSelectedNotes(new Set());
     setIsMultiSelect(false);
     setIsAllSelect(false);

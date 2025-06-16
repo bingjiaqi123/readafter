@@ -65,8 +65,15 @@ export function EditReadDialog({
   };
 
   const handleAddTag = () => {
-    if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag]);
+    if (newTag.trim()) {
+      // 分割标签：支持空格和逗号作为分隔符
+      const tagList = newTag.split(/[,，\s]+/).filter(tag => tag.trim());
+      
+      // 添加新标签，过滤掉重复的
+      const uniqueTags = tagList.filter(tag => !tags.includes(tag.trim()));
+      if (uniqueTags.length > 0) {
+        setTags([...tags, ...uniqueTags.map(tag => tag.trim())]);
+      }
       setNewTag("");
     }
   };
@@ -157,7 +164,7 @@ export function EditReadDialog({
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入新标签"
+                  placeholder="输入新标签，可用空格或逗号分隔多个标签"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();

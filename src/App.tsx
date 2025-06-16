@@ -14,6 +14,7 @@ import {
   deleteNotesAndSchemes,
   deleteSchemes
 } from './utils/Manage/manageDelete';
+import { createSchemesFromNotes } from './utils/Manage/manageAddScheme';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -22,24 +23,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(0);
   const [hideSchemedNotes, setHideSchemedNotes] = useState(false);
 
-  const handleAddScheme = (noteIds: string[]) => {
-    // 为每个选中的笔记创建跟读方案
-    const newSchemes: ReadScheme[] = noteIds.map(noteId => {
-      const note = notes.find(n => n.id === noteId);
-      if (!note) return null;
-
-      const scheme: ReadScheme = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        noteId: note.id,
-        text: note.content,
-        title: note.title,
-        timestamp: new Date().toISOString(),
-        tags: note.tags || [],
-        isTitleEdited: false
-      };
-      return scheme;
-    }).filter((scheme): scheme is ReadScheme => scheme !== null);
-
+  const handleAddScheme = async (noteIds: string[]) => {
+    // 为每个选中的笔记创建跟读方案（包含气口处理）
+    const newSchemes = await createSchemesFromNotes(noteIds, notes);
     setReadSchemes(prev => [...prev, ...newSchemes]);
   };
 
