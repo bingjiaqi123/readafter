@@ -12,6 +12,9 @@ interface ManagePageProps {
   hideSchemedNotes: boolean;
   onHideSchemedNotesChange: (hide: boolean) => void;
   onAddScheme: (noteIds: string[]) => void;
+  onEditNote: (noteId: string, title: string, content: string, tags: string[]) => void;
+  onDeleteNote: (noteId: string, deleteMode: 'note-only' | 'note-and-schemes') => void;
+  onAddReadScheme: (noteId: string, text: string, title?: string) => void;
 }
 
 export function ManagePage({
@@ -20,7 +23,10 @@ export function ManagePage({
   onSearchChange,
   hideSchemedNotes,
   onHideSchemedNotesChange,
-  onAddScheme
+  onAddScheme,
+  onEditNote,
+  onDeleteNote,
+  onAddReadScheme
 }: ManagePageProps) {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
@@ -119,6 +125,9 @@ export function ManagePage({
             isMultiSelect={isMultiSelect}
             selectedNotes={selectedNotes}
             onNoteSelect={handleNoteSelect}
+            onEditNote={onEditNote}
+            onDeleteNote={onDeleteNote}
+            onAddReadScheme={onAddReadScheme}
           />
         </div>
       </div>

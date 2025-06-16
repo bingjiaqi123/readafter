@@ -206,6 +206,43 @@ export default function App() {
     );
   };
 
+  const handleEditNote = (noteId: string, title: string, content: string, tags: string[]) => {
+    setNotes(prev => prev.map(note => 
+      note.id === noteId 
+        ? { ...note, title, content, tags, timestamp: new Date().toISOString() }
+        : note
+    ));
+  };
+
+  const handleDeleteNote = (noteId: string, deleteMode: 'note-only' | 'note-and-schemes') => {
+    setNotes(prev => prev.filter(note => note.id !== noteId));
+    
+    if (deleteMode === 'note-and-schemes') {
+      // 同时删除相关的跟读方案
+      setReadSchemes(prev => prev.filter(scheme => scheme.noteId !== noteId));
+      // 从所有列表中删除相关方案
+      setReadLists(prevLists => 
+        prevLists.map(list => ({
+          ...list,
+          schemes: list.schemes.filter(s => s.noteId !== noteId)
+        }))
+      );
+    }
+  };
+
+  const handleAddReadScheme = (noteId: string, text: string, title?: string) => {
+    const newScheme: ReadScheme = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      noteId: noteId,
+      text: text,
+      title: title || '',
+      timestamp: new Date().toISOString(),
+      tags: [],
+      isTitleEdited: false
+    };
+    setReadSchemes(prev => [...prev, newScheme]);
+  };
+
   return (
     <div className="container mx-auto">
       <Tab.Group selectedIndex={activeTab} onChange={setActiveTab}>
@@ -255,6 +292,9 @@ export default function App() {
                 hideSchemedNotes={hideSchemedNotes}
                 onHideSchemedNotesChange={setHideSchemedNotes}
                 onAddScheme={handleAddScheme}
+                onEditNote={handleEditNote}
+                onDeleteNote={handleDeleteNote}
+                onAddReadScheme={handleAddReadScheme}
               />
             </Tab.Panel>
             <Tab.Panel>
