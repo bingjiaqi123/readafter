@@ -83,16 +83,21 @@ export function AddToListsDialog({
           {/* 现有列表 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">选择现有列表</label>
-            <div className="space-y-2">
+            <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-2">
               {readLists.map((list) => (
                 <button
                   key={list.id}
                   onClick={() => onAddToList(list.id)}
-                  className="w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200 rounded"
+                  className="w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                 >
                   {list.name}
                 </button>
               ))}
+              {readLists.length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  暂无列表，请先创建一个
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -305,10 +305,10 @@ export default function App() {
         <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 mb-4">
           <div className="container mx-auto px-4 py-3 flex justify-between items-center">
             <Tab.List className="flex space-x-4">
-              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">添加笔记</Tab>
-              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">管理笔记</Tab>
-              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">跟读方案</Tab>
-              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">跟读列表</Tab>
+              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">添加</Tab>
+              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">管理</Tab>
+              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">方案</Tab>
+              <Tab className="tab-button text-lg px-6 py-2.5 font-medium rounded-lg transition-all duration-200 hover:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ui-selected:bg-blue-500 ui-selected:text-white ui-not-selected:text-blue-900 ui-not-selected:hover:bg-blue-500/10">列表</Tab>
             </Tab.List>
             <div className="flex space-x-2">
               <button
