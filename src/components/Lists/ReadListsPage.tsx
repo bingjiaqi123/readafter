@@ -14,6 +14,7 @@ interface ReadListsPageProps {
   onAddToExistingList: (listId: string, schemes: { schemeId: string; noteId: string }[]) => void;
   onDeleteScheme: (listId: string, schemeId: string) => void;
   onEditReadScheme: (listId: string, schemeId: string, text: string, title: string, isTitleEdited: boolean) => void;
+  onToggleListPin?: (listId: string) => void;
 }
 
 export function ReadListsPage({ 
@@ -21,18 +22,54 @@ export function ReadListsPage({
   readSchemes,
   onDeleteReadList, 
   onUpdateListName,
-  onUpdateSchemeOrder
+  onUpdateSchemeOrder,
+  onToggleListPin
 }: ReadListsPageProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [showDeleteSchemeDialog, setShowDeleteSchemeDialog] = useState(false);
   const [schemeToDelete, setSchemeToDelete] = useState<{ listId: string; schemeId: string; } | null>(null);
-  const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
+  const [listModes, setListModes] = useState<Map<string, 'title-only' | 'collapsed' | 'expanded'>>(new Map());
   const [isRepeatDialogOpen, setIsRepeatDialogOpen] = useState(false);
   const [currentListId, setCurrentListId] = useState<string | null>(null);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingListName, setEditingListName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // 获取列表的模式
+  const getListMode = (listId: string): 'title-only' | 'collapsed' | 'expanded' => {
+    return listModes.get(listId) || 'title-only';
+  };
+
+  // 处理列表点击
+  const handleListClick = (listId: string) => {
+    const currentMode = getListMode(listId);
+    
+    // 如果当前是仅标题模式，点击后变为折叠模式
+    if (currentMode === 'title-only') {
+      // 先将所有列表设为仅标题模式
+      const newModes = new Map<string, 'title-only' | 'collapsed' | 'expanded'>();
+      readLists.forEach(list => {
+        newModes.set(list.id, 'title-only');
+      });
+      // 然后将点击的列表设为折叠模式
+      newModes.set(listId, 'collapsed');
+      setListModes(newModes);
+    }
+  };
+
+  // 处理展开/折叠按钮点击
+  const handleToggleExpand = (listId: string) => {
+    const currentMode = getListMode(listId);
+    
+    if (currentMode === 'collapsed') {
+      // 从折叠模式切换到展开模式
+      setListModes(prev => new Map(prev).set(listId, 'expanded'));
+    } else if (currentMode === 'expanded') {
+      // 从展开模式切换到折叠模式
+      setListModes(prev => new Map(prev).set(listId, 'collapsed'));
+    }
+  };
 
   const handleDeleteClick = (list: ReadList) => {
     setListToDelete(list.id);
@@ -57,16 +94,22 @@ export function ReadListsPage({
     setIsRepeatDialogOpen(true);
   };
 
-  const toggleListExpand = (listId: string) => {
-    setExpandedLists(prev => {
-      const next = new Set(prev);
-      if (next.has(listId)) {
-        next.delete(listId);
-      } else {
-        next.add(listId);
-      }
-      return next;
-    });
+  const handleDeleteSchemeClick = (listId: string, schemeId: string) => {
+    setSchemeToDelete({ listId, schemeId });
+    setShowDeleteSchemeDialog(true);
+  };
+
+  const handleDeleteSchemeConfirm = () => {
+    if (schemeToDelete && onUpdateSchemeOrder) {
+      onUpdateSchemeOrder(schemeToDelete.listId, [schemeToDelete.schemeId]);
+      setShowDeleteSchemeDialog(false);
+      setSchemeToDelete(null);
+    }
+  };
+
+  const handleDeleteSchemeCancel = () => {
+    setShowDeleteSchemeDialog(false);
+    setSchemeToDelete(null);
   };
 
   // 处理列表标题编辑
@@ -139,39 +182,43 @@ export function ReadListsPage({
     onUpdateSchemeOrder(listId, schemeIds);
   };
 
-  const handleDeleteSchemeClick = (listId: string, schemeId: string) => {
-    setSchemeToDelete({ listId, schemeId });
-    setShowDeleteSchemeDialog(true);
-  };
-
-  const handleDeleteSchemeConfirm = () => {
-    if (schemeToDelete && onUpdateSchemeOrder) {
-      onUpdateSchemeOrder(schemeToDelete.listId, [schemeToDelete.schemeId]);
-      setShowDeleteSchemeDialog(false);
-      setSchemeToDelete(null);
+  const handleTogglePin = (listId: string) => {
+    if (onToggleListPin) {
+      onToggleListPin(listId);
     }
   };
 
-  const handleDeleteSchemeCancel = () => {
-    setShowDeleteSchemeDialog(false);
-    setSchemeToDelete(null);
-  };
+  // 对列表进行排序：置顶的在前，未置顶的在后
+  const sortedLists = [...readLists].sort((a, b) => {
+    const aPinned = a.isPinned || false;
+    const bPinned = b.isPinned || false;
+    if (aPinned === bPinned) return 0;
+    return aPinned ? -1 : 1;
+  });
 
   return (
     <div className="p-6">
 
       <div className="space-y-4">
-        {readLists.map((list) => (
+        {sortedLists.map((list) => (
           <div
             key={list.id}
-            className="border rounded-lg p-4 bg-white shadow-sm hover:border-gray-300"
+            className={`border rounded-lg p-4 bg-white shadow-sm hover:border-gray-300 cursor-pointer ${
+              list.isPinned ? 'border-yellow-300 bg-yellow-50' : ''
+            }`}
+            onClick={() => handleListClick(list.id)}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <ExpandMode
-                  isExpanded={expandedLists.has(list.id)}
-                  onToggle={() => toggleListExpand(list.id)}
+                  mode={getListMode(list.id)}
+                  onToggle={() => handleToggleExpand(list.id)}
                 />
+                {list.isPinned && (
+                  <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 4.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V4.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.616a1 1 0 01.894-1.79l1.599.8L9 4.323V3a1 1 0 011-1z" />
+                  </svg>
+                )}
                 {editingListId === list.id ? (
                   <input
                     ref={editInputRef}
@@ -200,13 +247,33 @@ export function ReadListsPage({
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => handleStartRead(list.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartRead(list.id);
+                  }}
                   className="px-3 py-1 text-indigo-600 hover:text-indigo-800"
                 >
                   跟读
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTogglePin(list.id);
+                  }}
+                  className={`px-3 py-1 rounded hover:bg-gray-100 ${
+                    list.isPinned ? 'text-yellow-600 hover:text-yellow-800' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  title={list.isPinned ? "取消置顶" : "置顶"}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 4.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V4.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.616a1 1 0 01.894-1.79l1.599.8L9 4.323V3a1 1 0 011-1z" />
+                  </svg>
+                </button>
                 <TextDeleteButton
-                  onClick={() => handleDeleteClick(list)}
+                  onClick={(e) => {
+                    if (e) e.stopPropagation();
+                    handleDeleteClick(list);
+                  }}
                   className="px-3 py-1"
                 >
                   删除列表
@@ -214,7 +281,11 @@ export function ReadListsPage({
               </div>
             </div>
 
-            {!expandedLists.has(list.id) ? (
+            {/* 仅标题模式：不显示任何方案 */}
+            {getListMode(list.id) === 'title-only' && null}
+
+            {/* 折叠模式：显示方案标题 */}
+            {getListMode(list.id) === 'collapsed' && (
               <div className="space-y-2">
                 {list.schemes
                   .sort((a, b) => a.order - b.order)
@@ -238,7 +309,10 @@ export function ReadListsPage({
                     );
                   })}
               </div>
-            ) : (
+            )}
+
+            {/* 展开模式：显示完整方案信息 */}
+            {getListMode(list.id) === 'expanded' && (
               <div className="space-y-2">
                 {list.schemes
                   .sort((a, b) => a.order - b.order)

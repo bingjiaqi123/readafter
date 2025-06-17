@@ -19,7 +19,8 @@ export const createReadList = (
       schemeId: scheme.schemeId,
       noteId: scheme.noteId,
       order: index
-    }))
+    })),
+    isPinned: false
   };
 
   return [...existingLists, newList];

@@ -52,7 +52,8 @@ export default function App() {
         schemeId: scheme.schemeId,
         noteId: scheme.noteId,
         order: index
-      }))
+      })),
+      isPinned: false
     };
     setReadLists(prev => [...prev, newList]);
   };
@@ -289,6 +290,14 @@ export default function App() {
     ));
   };
 
+  const handleToggleListPin = (listId: string) => {
+    setReadLists(prev => prev.map(list => 
+      list.id === listId 
+        ? { ...list, isPinned: !list.isPinned }
+        : list
+    ));
+  };
+
   return (
     <div className="container mx-auto">
       <Tab.Group selectedIndex={activeTab} onChange={setActiveTab}>
@@ -368,6 +377,7 @@ export default function App() {
                 onAddToExistingList={handleAddToExistingList}
                 onDeleteScheme={handleDeleteScheme}
                 onEditReadScheme={handleEditReadScheme}
+                onToggleListPin={handleToggleListPin}
               />
             </Tab.Panel>
           </Tab.Panels>

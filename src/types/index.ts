@@ -25,6 +25,7 @@ export interface ReadList {
     noteId: string;
     order: number;
   }>;
+  isPinned?: boolean;
 }
 
 // 类型守卫函数
