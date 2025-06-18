@@ -63,6 +63,22 @@ function removeCommonLinesFromProper(fileContents) {
     return fileContents;
 }
 
+// Remove single character lines from proper.txt
+function removeSingleCharLinesFromProper(fileContents) {
+    if (!fileContents['proper.txt']) return fileContents;
+    
+    const properLines = fileContents['proper.txt'];
+    
+    // Remove lines that contain only a single character
+    const filteredProperLines = properLines.filter(line => {
+        const trimmedLine = line.trim();
+        return trimmedLine.length > 1; // Keep lines with more than 1 character
+    });
+    
+    fileContents['proper.txt'] = filteredProperLines;
+    return fileContents;
+}
+
 // Write files back
 function writeFiles(fileContents) {
     for (const [filename, lines] of Object.entries(fileContents)) {
@@ -95,7 +111,17 @@ if (fileContents['proper.txt']) {
     console.log(`proper.txt: 移除与其他文件重复的行后 ${beforeProperCount} -> ${afterProperCount} 行 (移除 ${beforeProperCount - afterProperCount} 个重复)`);
 }
 
+// Remove single character lines from proper.txt
+console.log('\n处理 proper.txt 中的单个字符行...');
+const beforeSingleCharCount = updatedFileContents['proper.txt'] ? updatedFileContents['proper.txt'].length : 0;
+const updatedFileContentsAfterSingleCharRemoval = removeSingleCharLinesFromProper(updatedFileContents);
+const afterSingleCharCount = updatedFileContentsAfterSingleCharRemoval['proper.txt'] ? updatedFileContentsAfterSingleCharRemoval['proper.txt'].length : 0;
+
+if (updatedFileContents['proper.txt']) {
+    console.log(`proper.txt: 移除单个字符行后 ${beforeSingleCharCount} -> ${afterSingleCharCount} 行 (移除 ${beforeSingleCharCount - afterSingleCharCount} 个单字符行)`);
+}
+
 // Write all files back
-writeFiles(updatedFileContents);
+writeFiles(updatedFileContentsAfterSingleCharRemoval);
 
 console.log('\n所有文件处理完成！'); 
