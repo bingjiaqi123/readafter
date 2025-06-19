@@ -1,17 +1,15 @@
-// import React from 'react';
-
 interface ReadSearchBarProps {
   searchTerm: string;
-  onSearchChange: (term: string) => void;
+  onSearchChange: (value: string) => void;
   placeholder?: string;
   hideSchemedNotes?: boolean;
-  onHideSchemedChange?: (hide: boolean) => void;
+  onHideSchemedChange?: (value: boolean) => void;
   isMultiSelect?: boolean;
   isAllSelect?: boolean;
   onMultiSelectToggle?: () => void;
   onAllSelectToggle?: () => void;
   onCancelMultiSelect?: () => void;
-  selectedSchemes: Set<string>;
+  selectedSchemes?: Set<string>;
   onAddToList?: () => void;
   onDeleteAll?: () => void;
   onRemoveAllLinks?: () => void;

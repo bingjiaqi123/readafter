@@ -1,6 +1,7 @@
 // 定义词库分类类型
 export type DictCategory = 
   | 'proper'      // 专有词
+  | 'pause_proper' // 包含顿号的专有词
   | 'no_split_before'  // 词前不拆
   | 'no_split_after'   // 词后不拆
   | 'number'           // 数字
@@ -14,6 +15,12 @@ export const DICT_CATEGORIES = [
     name: '专有词',
     description: '专有名词，如人名、地名等',
     file: 'proper.txt'
+  },
+  {
+    id: 'pause_proper' as DictCategory,
+    name: '顿号专有词',
+    description: '包含顿号的专有词，如"采、写、编、评"',
+    file: 'pause_proper.txt'
   },
   {
     id: 'no_split_before' as DictCategory,
@@ -56,6 +63,24 @@ export const DICT_CATEGORIES_OBJ = DICT_CATEGORIES.map(category => ({
 // 缓存默认词库数据
 let defaultDictCache: Partial<Record<DictCategory, string[]>> = {};
 
+// 预处理专有词，生成带顿号和不带顿号的版本
+function preprocessProperWords(words: string[]): string[] {
+  const processedWords = new Set<string>();
+  
+  for (const word of words) {
+    // 添加原词
+    processedWords.add(word);
+    
+    // 如果词中包含顿号，生成不带顿号的版本
+    if (word.includes('、')) {
+      const withoutPause = word.replace(/、/g, '');
+      processedWords.add(withoutPause);
+    }
+  }
+  
+  return Array.from(processedWords);
+}
+
 // 获取默认词库
 const getDefaultDict = async (category: DictCategory): Promise<string[]> => {
   // 如果缓存中有数据，直接返回
@@ -74,9 +99,14 @@ const getDefaultDict = async (category: DictCategory): Promise<string[]> => {
 
     const text = await response.text();
     // 按行分割，过滤空行，去除每行首尾空白
-    const words = text.split('\n')
+    let words = text.split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0);
+
+    // 对专有词进行预处理
+    if (category === 'proper') {
+      words = preprocessProperWords(words);
+    }
 
     // 缓存结果
     defaultDictCache[category] = words;
@@ -92,7 +122,12 @@ export const getDict = async (category: DictCategory): Promise<string[]> => {
   const savedDict = localStorage.getItem(`dict_${category}`);
   if (savedDict) {
     try {
-      return JSON.parse(savedDict);
+      let words = JSON.parse(savedDict);
+      // 对专有词进行预处理
+      if (category === 'proper') {
+        words = preprocessProperWords(words);
+      }
+      return words;
     } catch {
       return getDefaultDict(category);
     }
@@ -129,10 +164,57 @@ export const resetAllDicts = async (): Promise<void> => {
   );
 };
 
-// 检查是否是专有词
+// 检查是否是专有词（支持带顿号的匹配）
 export async function isProperNoun(word: string): Promise<boolean> {
   const dict = await getDict('proper');
-  return dict.includes(word);
+  
+  // 直接匹配
+  if (dict.includes(word)) {
+    return true;
+  }
+  
+  // 如果词中包含顿号，尝试匹配不带顿号的版本
+  if (word.includes('、')) {
+    const withoutPause = word.replace(/、/g, '');
+    return dict.includes(withoutPause);
+  }
+  
+  return false;
+}
+
+// 检查文本是否以专有词开头（支持带顿号的匹配）
+export async function startsWithProperNoun(text: string): Promise<{ matched: boolean; word: string; length: number }> {
+  const [properDict, pauseProperDict] = await Promise.all([
+    getDict('proper'),
+    getDict('pause_proper')
+  ]);
+  
+  // 合并两个词典，按长度降序排序，优先匹配长词
+  const allDict = [...properDict, ...pauseProperDict].sort((a, b) => b.length - a.length);
+  
+  for (const word of allDict) {
+    // 直接匹配
+    if (text.startsWith(word)) {
+      return { matched: true, word, length: word.length };
+    }
+    
+    // 如果词典中的词包含顿号，尝试匹配不带顿号的版本
+    if (word.includes('、')) {
+      const withoutPause = word.replace(/、/g, '');
+      if (text.startsWith(withoutPause)) {
+        return { matched: true, word: withoutPause, length: withoutPause.length };
+      }
+    }
+    
+    // 如果文本以顿号开头，尝试匹配带顿号的版本
+    if (text.startsWith('、') && word.startsWith('、')) {
+      if (text.startsWith(word)) {
+        return { matched: true, word, length: word.length };
+      }
+    }
+  }
+  
+  return { matched: false, word: '', length: 0 };
 }
 
 /**

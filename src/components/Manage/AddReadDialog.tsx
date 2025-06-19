@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import { extractSentences } from '../../utils/Segment/sentenceExtractor';
 import { addPunctuationBreaks } from '../../utils/Segment/firstPreBreaks';

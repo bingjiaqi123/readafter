@@ -1,4 +1,4 @@
-import { getDict } from './manageDict';
+import { getDict, startsWithProperNoun } from './manageDict';
 import { handlePauseSplit } from './pauseSplitter';
 
 const MAX_SENTENCE_LENGTH = 20;
@@ -12,16 +12,17 @@ interface WordSegment {
 }
 
 /**
- * 对文本进行分词
- * 使用词典中的词进行最大正向匹配
+ * 分词函数
+ * 根据词典对文本进行分词
  */
 async function segmentText(text: string): Promise<WordSegment[]> {
     const segments: WordSegment[] = [];
     let pos = 0;
     
     // 获取所有词典中的词
-    const [properWords, noSplitBeforeWords, noSplitAfterWords, numberWords, noNumberAfterWords, noNumberBeforeWords] = await Promise.all([
+    const [properWords, pauseProperWords, noSplitBeforeWords, noSplitAfterWords, numberWords, noNumberAfterWords, noNumberBeforeWords] = await Promise.all([
         getDict('proper'),
+        getDict('pause_proper'),
         getDict('no_split_before'),
         getDict('no_split_after'),
         getDict('number'),
@@ -31,6 +32,7 @@ async function segmentText(text: string): Promise<WordSegment[]> {
 
     const allWords = [
         ...properWords,
+        ...pauseProperWords,
         ...noSplitBeforeWords,
         ...noSplitAfterWords,
         ...numberWords,
@@ -41,17 +43,29 @@ async function segmentText(text: string): Promise<WordSegment[]> {
     while (pos < text.length) {
         let found = false;
         
-        // 尝试匹配词典中的词
-        for (const word of allWords) {
-            if (text.slice(pos).startsWith(word)) {
-                segments.push({
-                    word,
-                    start: pos,
-                    end: pos + word.length
-                });
-                pos += word.length;
-                found = true;
-                break;
+        // 首先尝试匹配专有词（支持带顿号的匹配）
+        const properMatch = await startsWithProperNoun(text.slice(pos));
+        if (properMatch.matched) {
+            segments.push({
+                word: properMatch.word,
+                start: pos,
+                end: pos + properMatch.length
+            });
+            pos += properMatch.length;
+            found = true;
+        } else {
+            // 尝试匹配词典中的其他词
+            for (const word of allWords) {
+                if (text.slice(pos).startsWith(word)) {
+                    segments.push({
+                        word,
+                        start: pos,
+                        end: pos + word.length
+                    });
+                    pos += word.length;
+                    found = true;
+                    break;
+                }
             }
         }
         
@@ -89,7 +103,7 @@ export async function handleLongSentenceSemanticSplit(sentences: { length: numbe
         if (sentence.length > MAX_SENTENCE_LENGTH) {
             console.log('句子超过长度限制，进行顿号分割');
             // 1. 先进行顿号分割
-            const pauseSplitResult = handlePauseSplit([sentence.text]);
+            const pauseSplitResult = await handlePauseSplit([sentence.text]);
             console.log('顿号分割结果:', pauseSplitResult);
             
             // 2. 对顿号分割后的每个部分进行语义分割
@@ -203,12 +217,13 @@ async function isValidSplitPointWithSegments(segments: WordSegment[], pos: numbe
     const nextWord = segments[pos + 1].word;
 
     // 获取所有需要的词典
-    const [numberWords, noNumberAfterWords, noNumberBeforeWords, noSplitBeforeWords, noSplitAfterWords] = await Promise.all([
+    const [numberWords, noNumberAfterWords, noNumberBeforeWords, noSplitBeforeWords, noSplitAfterWords, pauseProperWords] = await Promise.all([
         getDict('number'),
         getDict('no_number_after'),
         getDict('no_number_before'),
         getDict('no_split_before'),
-        getDict('no_split_after')
+        getDict('no_split_after'),
+        getDict('pause_proper')
     ]);
 
     // 规则1：数字和数字后不拆词之间不能分割
@@ -233,6 +248,15 @@ async function isValidSplitPointWithSegments(segments: WordSegment[], pos: numbe
     if (noSplitAfterWords.includes(nextWord)) {
         console.log('规则4：词后不拆:', nextWord);
         return false;
+    }
+
+    // 规则5：检查是否在包含顿号的专有词中间
+    const combinedText = currentWord + nextWord;
+    for (const pauseProperWord of pauseProperWords) {
+        if (pauseProperWord.includes(combinedText) || combinedText.includes(pauseProperWord)) {
+            console.log('规则5：在包含顿号的专有词中间，不能分割:', pauseProperWord);
+            return false;
+        }
     }
 
     console.log('分割点合法');

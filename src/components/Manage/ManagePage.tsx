@@ -41,6 +41,7 @@ export function ManagePage({
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditTagsDialog, setShowEditTagsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showTagTree, setShowTagTree] = useState(true);
 
   const handleAddToList = async () => {
     if (selectedNotes.size === 0) return;
@@ -184,11 +185,13 @@ export function ManagePage({
 
   return (
     <div className="flex h-full">
-      <div className="w-64 border-r border-gray-200 overflow-y-auto">
+      <div className={`${showTagTree ? 'w-64' : 'w-16'} border-r border-gray-200 overflow-y-auto transition-all duration-300`}>
         <ManageTagTree
           items={notes}
           onTagSelect={handleTagSelect}
           selectedTags={selectedTag ? [selectedTag] : []}
+          showTagTree={showTagTree}
+          onToggleTagTree={setShowTagTree}
         />
       </div>
       <div className="flex-1 flex flex-col overflow-hidden">

@@ -54,6 +54,7 @@ export function ReadPage({
   const [hideListedSchemes, setHideListedSchemes] = useState(false);
   const [schemeToEdit, setSchemeToEdit] = useState<SchemeToEdit | null>(null);
   const [newListName, setNewListName] = useState('');
+  const [showTagTree, setShowTagTree] = useState(true);
 
   // 过滤方案
   const filteredSchemes: FilteredScheme[] = useMemo(() => {
@@ -281,11 +282,13 @@ export function ReadPage({
   return (
     <div className="flex h-full">
       {/* 左侧标签树 */}
-      <div className="w-64 border-r border-gray-200 overflow-y-auto">
+      <div className={`${showTagTree ? 'w-64' : 'w-16'} border-r border-gray-200 overflow-y-auto transition-all duration-300`}>
         <ReadTagTree
           items={readSchemes}
           onTagSelect={handleTagSelect}
           selectedTags={selectedTags}
+          showTagTree={showTagTree}
+          onToggleTagTree={setShowTagTree}
         />
       </div>
 

@@ -1,5 +1,3 @@
-// import React from 'react';
-
 interface ExpandModeProps {
   mode: 'title-only' | 'collapsed' | 'expanded';
   onToggle: () => void;
